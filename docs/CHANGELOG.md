@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-generated documentation for all dashboard pages via auto-docs system
 
 ### Changed
+- Update README with Homebrew install instructions
 - Fix formula SHA256 checksum
 - Fix formula: correct GitHub username and real SHA256
 - Updated all dashboard HTML pages (cost, efficiency, models, optimizer, patterns, projects, index) with enhanced styling, navigation, and data visualization

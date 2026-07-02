@@ -88,13 +88,6 @@
     <!-- verdict strip -->
     <div class="verdict-strip" id="kpi-strip"></div>
 
-    <!-- path prefix config -->
-    <div class="config-bar">
-      <label>Strip path prefix:</label>
-      <input type="text" id="path-prefix" value="/Users/pghose/" />
-      <button onclick="applyPrefix()">Apply</button>
-      <span style="color:var(--muted);font-size:0.8rem">Strips prefix from project paths in labels below</span>
-    </div>
 
     <!-- narrative -->
     <div class="section">
@@ -218,7 +211,19 @@
     const attr = D.attributionData || { skills: [], mcpTools: [], hookSessionCount: 0 };
 
     // ── Helpers ────────────────────────────────────────────────────────────
-    let PREFIX = '/Users/pghose/';
+    // Auto-detect common prefix from all project paths
+    function detectPrefix(paths) {
+      if (!paths.length) return '';
+      const parts = paths[0].split('/');
+      let prefix = '';
+      for (let i = 1; i <= parts.length; i++) {
+        const candidate = parts.slice(0, i).join('/') + '/';
+        if (paths.every(p => p.startsWith(candidate))) prefix = candidate;
+        else break;
+      }
+      return prefix;
+    }
+    const PREFIX = detectPrefix(projects.map(p => p.name));
     function shortPath(p) {
       return p.startsWith(PREFIX) ? p.slice(PREFIX.length) : p;
     }
@@ -404,14 +409,6 @@
       document.getElementById('mcp-chart').parentElement.innerHTML = '<div class="no-data">No data</div>';
     }
 
-    // ── Prefix config ──────────────────────────────────────────────────────
-    window.applyPrefix = function() {
-      PREFIX = document.getElementById('path-prefix').value;
-      renderNarrative();
-      renderProjChart();
-      renderTable();
-      renderTimeline();
-    };
 
     // ── Timeline ───────────────────────────────────────────────────────────
     const MODEL_COLORS = {
