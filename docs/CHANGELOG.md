@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-generated documentation for all dashboard pages via auto-docs system
 
 ### Changed
+- Bump formula to v1.0.1
 - Fix projects page: detectPrefix use .path not .name
 - Auto-detect path prefix instead of hardcoding /Users/pghose/
 - Update README with Homebrew install instructions
