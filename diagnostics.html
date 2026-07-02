@@ -23115,5 +23115,165 @@ window.CCUSAGE_DATA = {
 
   })();
   </script>
+
+  <!-- ── Hook Impact Section ─────────────────────────────────────────── -->
+  <script>
+  (function() {
+    const D = window.CCUSAGE_DATA || {};
+    const diag = D.diagnosticsData || {};
+    const sessions = diag.sessions || [];
+    const globalBashCmds = diag.globalBashCmds || {};
+    const globalReReads = diag.globalReReads || [];
+
+    // ── Estimates ────────────────────────────────────────────────────────
+    const AVG_FILE_TOKENS = 1500;    // average tokens per file read
+    const AVG_CAT_TOKENS  = 1500;    // same — cat dumps file into bash output
+    const SONNET_COST_PER_M = 3.0;   // $/M input tokens (conservative)
+
+    const catCount        = globalBashCmds['cat'] || 0;
+    const catTokensSaved  = catCount * AVG_CAT_TOKENS;
+    const catCostSaved    = catTokensSaved / 1e6 * SONNET_COST_PER_M;
+
+    // Re-reads: only count reads beyond 2nd (3rd+ are the wasteful ones)
+    const rereadTokensSaved = globalReReads.reduce((s, r) => s + Math.max(0, r.count - 2) * AVG_FILE_TOKENS, 0);
+    const rereadCostSaved   = rereadTokensSaved / 1e6 * SONNET_COST_PER_M;
+
+    // Context pressure: sessions that hit >80k
+    const highCtxSessions  = sessions.filter(s => s.maxCtx >= 80000);
+    const urgentCtxSessions = sessions.filter(s => s.maxCtx >= 120000);
+    // Estimate: each compaction saves ~half the remaining context × avg turns after threshold
+    const avgTurnsAfterWarn = 8;
+    const ctxTokensSaved    = highCtxSessions.length * 40000 * avgTurnsAfterWarn; // rough
+    const ctxCostSaved      = ctxTokensSaved / 1e6 * SONNET_COST_PER_M;
+
+    const totalTokensSaved  = catTokensSaved + rereadTokensSaved + ctxTokensSaved;
+    const totalCostSaved    = catCostSaved + rereadCostSaved + ctxCostSaved;
+
+    function fmt$(n) { return '$' + n.toFixed(2); }
+    function fmtK(n) { return n >= 1000 ? (n/1000).toFixed(1)+'k' : String(n); }
+
+    // ── Render ────────────────────────────────────────────────────────────
+    const container = document.createElement('div');
+    container.style.cssText = 'max-width:960px;margin:2rem auto 0;padding:0 1rem 3rem';
+
+    container.innerHTML = `
+      <div class="section-title" style="margin-bottom:1rem">Hook Impact — Estimated Savings</div>
+
+      <div class="narrative" style="margin-bottom:1.5rem">
+        Based on <strong>${sessions.length}</strong> analysed sessions.
+        Savings are estimates: cat blocks assume ${fmtK(AVG_CAT_TOKENS)} tokens/file,
+        re-read blocks assume the same, context warnings assume
+        ~${avgTurnsAfterWarn} turns saved per session above 80k threshold.
+        Actual savings depend on whether you acted on each warning.
+      </div>
+
+      <!-- KPI strip -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem">
+        ${[
+          { label: 'cat calls intercepted', value: catCount, sub: `~${fmtK(catTokensSaved)} tokens · ${fmt$(catCostSaved)} saved`, cls: catCount > 0 ? 'green' : 'muted' },
+          { label: 'Re-read blocks (3rd+)', value: globalReReads.reduce((s,r)=>s+Math.max(0,r.count-2),0), sub: `~${fmtK(rereadTokensSaved)} tokens · ${fmt$(rereadCostSaved)} saved`, cls: rereadTokensSaved > 0 ? 'green' : 'muted' },
+          { label: 'Sessions above 80k ctx', value: highCtxSessions.length, sub: `${urgentCtxSessions.length} hit 120k (urgent)`, cls: urgentCtxSessions.length > 0 ? 'red' : highCtxSessions.length > 0 ? 'amber' : 'green' },
+          { label: 'Total est. savings', value: fmt$(totalCostSaved), sub: `~${fmtK(totalTokensSaved)} tokens`, cls: totalCostSaved > 0.5 ? 'green' : 'muted' },
+        ].map(k => `
+          <div style="background:var(--surface);border-radius:8px;padding:1rem;border:1px solid var(--border)">
+            <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;margin-bottom:.3rem">${k.label}</div>
+            <div style="font-size:1.6rem;font-weight:700;color:var(--${k.cls})">${k.value}</div>
+            <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem">${k.sub}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Per-hook breakdown table -->
+      <div style="background:var(--surface);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin-bottom:2rem">
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:.6rem 1rem;text-align:left;color:var(--muted);font-weight:600">Hook</th>
+              <th style="padding:.6rem 1rem;text-align:left;color:var(--muted);font-weight:600">Trigger</th>
+              <th style="padding:.6rem 1rem;text-align:right;color:var(--muted);font-weight:600">Intercepts</th>
+              <th style="padding:.6rem 1rem;text-align:right;color:var(--muted);font-weight:600">Est. Tokens Saved</th>
+              <th style="padding:.6rem 1rem;text-align:right;color:var(--muted);font-weight:600">Est. Cost Saved</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:.6rem 1rem;color:var(--text);font-weight:500">bash-cat-block</td>
+              <td style="padding:.6rem 1rem;color:var(--muted)">PreToolUse:Bash — <code>cat &lt;file&gt;</code></td>
+              <td style="padding:.6rem 1rem;text-align:right;color:var(--green)">${catCount}</td>
+              <td style="padding:.6rem 1rem;text-align:right;color:var(--text)">${fmtK(catTokensSaved)}</td>
+              <td style="padding:.6rem 1rem;text-align:right;color:var(--green)">${fmt$(catCostSaved)}</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:.6rem 1rem;color:var(--text);font-weight:500">reread-warn</td>
+              <td style="padding:.6rem 1rem;color:var(--muted)">PreToolUse:Read — 3rd+ read of same file</td>
+              <td style="padding:.6rem 1rem;text-align:right;color:var(--green)">${globalReReads.reduce((s,r)=>s+Math.max(0,r.count-2),0)}</td>
+              <td style="padding:.6rem 1rem;text-align:right;color:var(--text)">${fmtK(rereadTokensSaved)}</td>
+              <td style="padding:.6rem 1rem;text-align:right;color:var(--green)">${fmt$(rereadCostSaved)}</td>
+            </tr>
+            <tr>
+              <td style="padding:.6rem 1rem;color:var(--text);font-weight:500">context-monitor</td>
+              <td style="padding:.6rem 1rem;color:var(--muted)">Stop — sessions crossing 80k / 120k tokens</td>
+              <td style="padding:.6rem 1rem;text-align:right;color:${urgentCtxSessions.length > 0 ? 'var(--red)' : 'var(--amber)'}">${highCtxSessions.length} (${urgentCtxSessions.length} urgent)</td>
+              <td style="padding:.6rem 1rem;text-align:right;color:var(--text)">${fmtK(ctxTokensSaved)}</td>
+              <td style="padding:.6rem 1rem;text-align:right;color:var(--green)">${fmt$(ctxCostSaved)}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr style="border-top:1px solid var(--border);background:rgba(0,0,0,.2)">
+              <td colspan="4" style="padding:.6rem 1rem;color:var(--muted);font-weight:600">Total estimated savings</td>
+              <td style="padding:.6rem 1rem;text-align:right;font-weight:700;color:var(--green)">${fmt$(totalCostSaved)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Sessions near/above context threshold -->
+      ${highCtxSessions.length > 0 ? `
+        <div class="section-title" style="margin-bottom:.75rem">Sessions That Hit Context Threshold</div>
+        <div style="background:var(--surface);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin-bottom:2rem">
+          <table style="width:100%;border-collapse:collapse;font-size:.8rem">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border)">
+                <th style="padding:.5rem 1rem;text-align:left;color:var(--muted)">Project</th>
+                <th style="padding:.5rem 1rem;text-align:right;color:var(--muted)">Max Ctx</th>
+                <th style="padding:.5rem 1rem;text-align:right;color:var(--muted)">Turns</th>
+                <th style="padding:.5rem 1rem;text-align:right;color:var(--muted)">Cost</th>
+                <th style="padding:.5rem 1rem;text-align:right;color:var(--muted)">Level</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${highCtxSessions.slice(0,15).map(s => {
+                const lvl = s.maxCtx >= 120000 ? ['URGENT','var(--red)'] : ['WARN','var(--amber)'];
+                const proj = s.projectPath.split('/').slice(-2).join('/');
+                return `<tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:.5rem 1rem;color:var(--text)">${proj}</td>
+                  <td style="padding:.5rem 1rem;text-align:right;color:${lvl[1]}">${fmtK(s.maxCtx)}</td>
+                  <td style="padding:.5rem 1rem;text-align:right;color:var(--muted)">${s.turns}</td>
+                  <td style="padding:.5rem 1rem;text-align:right;color:var(--text)">$${s.cost.toFixed(3)}</td>
+                  <td style="padding:.5rem 1rem;text-align:right;font-weight:600;color:${lvl[1]}">${lvl[0]}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : '<div class="narrative" style="color:var(--green)">No sessions crossed the 80k context threshold. Context monitor had nothing to flag.</div>'}
+
+      <!-- cat usage breakdown -->
+      ${catCount > 0 ? `
+        <div class="section-title" style="margin-bottom:.75rem">Bash cat Usage (intercepted by hook)</div>
+        <div class="narrative warn" style="margin-bottom:1rem">
+          <strong>${catCount} cat commands</strong> were issued via the Bash tool this period.
+          Each one dumps file content into uncacheable bash output, permanently inflating context.
+          The hook blocks these and redirects to the Read tool.
+        </div>
+      ` : `
+        <div class="section-title" style="margin-bottom:.75rem">cat Usage</div>
+        <div class="narrative" style="color:var(--green);margin-bottom:1rem">No cat commands detected — hook working correctly.</div>
+      `}
+    `;
+
+    document.body.appendChild(container);
+  })();
+  </script>
 </body>
 </html>
