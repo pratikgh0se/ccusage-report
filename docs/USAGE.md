@@ -2,15 +2,23 @@
 
 A zero-dependency HTML spending dashboard for [Claude Code](https://claude.ai/code). Generate reports from your local Claude Code session data in seconds—no build step, no server required.
 
+Powered by [`ccusage`](https://github.com/ryoppippi/ccusage) — a CLI that reads Claude Code's local session JSONL files and aggregates token/cost data by day, month, and session. `generate.js` calls `ccusage` via `npx` to collect totals, then does its own JSONL scan for per-turn diagnostics and attribution data.
+
 ---
 
 ## Requirements
 
-- **Node.js** ≥ 18 (provides `npx`)
-- **Claude Code** — must be installed and actively used
-- **Local session data** at `~/.claude/projects/` (created automatically by Claude Code)
+| Dependency | Version | Purpose |
+|---|---|---|
+| **Node.js** | ≥ 18 | Runs `generate.js`; provides `npx` |
+| **npx** | bundled with Node | Fetches and runs `ccusage@latest` on each generation |
+| **ccusage** | latest (auto-fetched) | Aggregates Claude Code session data (daily/monthly/session totals + model breakdown) |
+| **Claude Code** | any | Must be installed and used — creates session data at `~/.claude/projects/` |
+| **Chart.js** | 4.4.0 (CDN) | Client-side chart rendering in the HTML pages (no install needed) |
 
-The project has **zero npm dependencies**. `generate.js` fetches `ccusage@latest` via npx on each run.
+No `npm install` needed. `ccusage` is fetched automatically via `npx ccusage@latest` every time you run `generate.js`.
+
+**ccusage** reads the same `~/.claude/projects/` JSONL files that Claude Code writes. It handles cost calculation and model-level aggregation. `generate.js` uses its JSON output (`-j` flag) as the primary cost/token source, then does an additional JSONL scan for turn-level diagnostics not exposed by ccusage (file re-reads, tool payloads, dead turns, attribution to skills/hooks/MCP).
 
 ---
 
@@ -18,7 +26,7 @@ The project has **zero npm dependencies**. `generate.js` fetches `ccusage@latest
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/ccusage-report.git
+git clone https://github.com/pratikgh0se/ccusage-report.git
 cd ccusage-report
 ```
 
@@ -29,10 +37,11 @@ npx --version
 ```
 
 ### 3. (Optional) Review configuration
-Edit the path prefix in `projects.html` if your home directory is not `/Users/pghose/`:
+Edit the path prefix in `projects.html` to match your home directory:
 ```js
 // In projects.html, around line 10:
-let PREFIX = '/Users/YOUR_USERNAME/';
+let PREFIX = '/Users/your-username/';  // macOS
+let PREFIX = '/home/your-username/';   // Linux
 ```
 This prefix is stripped from project names for readability. You can also change it interactively in the UI.
 
@@ -122,7 +131,7 @@ All 8 pages are **linked**. Use the navigation at the top of each page to jump b
 ### Path prefix (projects.html)
 The `projects.html` page strips a common prefix from project names to improve readability.
 
-**Default:**
+**Default (hardcoded to original author's path — change this):**
 ```js
 let PREFIX = '/Users/pghose/';  // In projects.html, line ~10
 ```

@@ -265,19 +265,20 @@ graph LR
 ## External Dependencies
 
 ### Runtime (Client)
-- **Chart.js** (loaded via CDN, v3.9+): Used by all pages for line/bar/pie charts, live updates with animation
+- **Chart.js 4.4.0** (loaded via CDN — no install): Line/bar/pie/doughnut charts across all 8 pages
 
 ### Build/Generation (Node)
-- **ccusage CLI** (npm): Called as subprocess via `npx ccusage@latest`
-  - Provides aggregated daily, monthly, session statistics
-  - Source of truth for model breakdowns and costs
-- **Node.js standard library**: `fs`, `path`, `os`, `child_process`
+- **Node.js ≥ 18**: Runs `generate.js`; provides `npx`, `fs`, `path`, `os`, `child_process`
+- **ccusage** ([github.com/ryoppippi/ccusage](https://github.com/ryoppippi/ccusage)): Auto-fetched via `npx ccusage@latest` — no manual install
+  - Scans `~/.claude/projects/` JSONL files and aggregates cost/token data
+  - Called 3 times: `daily -j`, `monthly -j`, `session -j`
+  - Handles model identification and cost calculation (pricing table is internal to ccusage)
+  - `generate.js` uses its JSON output as the primary cost/token source
 
 ### Data Sources
-- **~/.claude/projects/**: Claude Code session directory (read-only)
-  - One JSONL file per session UUID
-  - Parsed to extract turn-level metrics (token counts, tool usage, context size)
-- **ccusage internal state**: Accessed via CLI, no direct file I/O
+- **`~/.claude/projects/`**: Claude Code session directory (read-only)
+  - Populated automatically by Claude Code; one JSONL file per session UUID
+  - `generate.js` scans this directly for turn-level data ccusage doesn't expose: tool payloads, file re-reads, dead turns, attribution to skills/hooks/MCP tools
 
 ## Known Constraints & Tradeoffs
 
