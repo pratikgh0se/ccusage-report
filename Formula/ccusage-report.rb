@@ -2,7 +2,7 @@ class CcusageReport < Formula
   desc "Claude Code usage dashboard — generates HTML reports from ccusage data"
   homepage "https://github.com/pratikgh0se/ccusage-report"
   url "https://github.com/pratikgh0se/ccusage-report/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "27bd1a819305a11d08792f4d331a6da12d9df9d7febca876053cfa5ec3e9de18"
+  sha256 "1c2ffb4b0b28aabe2caf113383859b66875f05b20effcf85c501f1108e64a636"
   license "MIT"
 
   depends_on "node"
