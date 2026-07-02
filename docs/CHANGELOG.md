@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- ARCHITECTURE.md with system overview and Mermaid diagrams for project structure understanding
+- Hook Impact section to diagnostics.html for visibility into pre-commit hook performance metrics
+- Auto-generated documentation for all dashboard pages via auto-docs system
+
+### Changed
+- Updated all dashboard HTML pages (cost, efficiency, models, optimizer, patterns, projects, index) with enhanced styling, navigation, and data visualization
+- Corrected documentation URLs, dependencies list, and ccusage explanation for accuracy
+
 ## [0.1.0] - 2025-02-01
 
 ### Added

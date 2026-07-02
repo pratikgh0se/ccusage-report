@@ -13,9 +13,9 @@ function run(cmd) {
   }
 }
 
-const daily = run('npx ccusage@latest daily -j');
-const monthly = run('npx ccusage@latest monthly -j');
-const session = run('npx ccusage@latest session -j');
+const daily = run('ccusage daily -j');
+const monthly = run('ccusage monthly -j');
+const session = run('ccusage session -j');
 
 // Single pass over all JSONL files → projectData, attributionData, timelineData
 function buildAllFromJSONL(sessions) {
