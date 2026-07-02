@@ -6,9 +6,40 @@ Eight linked pages give you a full picture of where your AI spend goes — by da
 
 ---
 
-## Screenshots
+## Install
 
-> Run `node generate.js` then open `index.html` in a browser.
+### Homebrew (recommended)
+
+```bash
+brew tap pratikgh0se/ccusage-report
+brew install ccusage-report
+```
+
+Then just run:
+
+```bash
+ccusage-report
+```
+
+Generates a fresh report and opens the dashboard in your browser. Installs `ccusage` automatically if not present.
+
+### Manual
+
+```bash
+git clone https://github.com/pratikgh0se/ccusage-report.git
+cd ccusage-report
+./install.sh
+```
+
+Then run `ccusage-report` from anywhere.
+
+---
+
+## Requirements
+
+- **Node.js** ≥ 18
+- **ccusage** (installed automatically by Homebrew formula or `install.sh`)
+- **Claude Code** installed and used — session data lives in `~/.claude/projects/`
 
 ---
 
@@ -27,47 +58,11 @@ Eight linked pages give you a full picture of where your AI spend goes — by da
 
 ---
 
-## Requirements
-
-- **Node.js** ≥ 18
-- **npx** (bundled with Node)
-- **Claude Code** installed and used — session data lives in `~/.claude/projects/`
-
-No npm install needed. `generate.js` fetches `ccusage@latest` via npx on every run.
-
----
-
-## Usage
-
-```bash
-# Clone
-git clone https://github.com/YOUR_USERNAME/ccusage-report.git
-cd ccusage-report
-
-# Generate — reads your ~/.claude session data
-node generate.js
-
-# Open the dashboard
-open index.html        # macOS
-xdg-open index.html    # Linux
-start index.html       # Windows
-```
-
-### Configuring your path prefix
-
-`projects.html` strips a common path prefix to shorten project names. Default is `/Users/pghose/`. Change it in the UI (there is a text input at the top of the page) — or edit the default in `projects.html`:
-
-```js
-let PREFIX = '/Users/YOUR_USERNAME/';
-```
-
----
-
 ## How it works
 
 `generate.js` does three things:
 
-1. **Calls `ccusage`** via `npx ccusage@latest daily/monthly/session -j` to get aggregated cost data
+1. **Calls `ccusage`** (`ccusage daily/monthly/session -j`) to get aggregated cost data
 2. **Scans `~/.claude/projects/*/\*.jsonl`** for turn-level detail: context sizes, tool calls, file reads, model per turn, session attribution (skills, MCP, hooks)
 3. **Injects `window.CCUSAGE_DATA`** as a `<script>` block into all 8 HTML files between `<!-- DATA:START -->` / `<!-- DATA:END -->` markers
 
@@ -113,30 +108,34 @@ All 8 pages read from that single global — no server, no build, no reload loop
 - Auto-generated optimization tips based on: cache hit rate, Opus share, hook spend %, re-read count
 
 ### diagnostics.html — Inefficiency finder
-- **Dead turns**: turns where context was >50k tokens but output was <200 tokens (you paid for a big window and got nothing)
-- **Opus waste**: Opus turns where output was <500 tokens (expensive model, trivial output)
-- **File re-reads**: files read 3+ times in a session (already in context, wasted tokens)
+- **Dead turns**: turns where context was >50k tokens but output was <200 tokens
+- **Opus waste**: Opus turns where output was <500 tokens
+- **File re-reads**: files read 3+ times in a session
 - Context growth chart per session (expandable rows)
 - Tool call payload sizes
 - Global bash command frequency (flags `cat` usage)
 
 ---
 
-## Refresh
+## Configuring path prefix
 
-Re-run `node generate.js` any time to pull fresh data. The script updates all 8 HTML files in place.
+`projects.html` strips a common path prefix to shorten project names. Change it in the UI (text input at the top of the page) — or edit the default in `projects.html`:
+
+```js
+let PREFIX = '/Users/YOUR_USERNAME/';
+```
 
 ---
 
 ## Data privacy
 
-All data stays local. `generate.js` only reads `~/.claude/` and calls `npx ccusage@latest` (which also reads locally). Nothing is sent anywhere.
+All data stays local. `generate.js` only reads `~/.claude/` and calls `ccusage` locally. Nothing is sent anywhere.
 
 ---
 
 ## Contributing
 
-PRs welcome. The project intentionally has no build step — keep it that way. All logic is vanilla JS inside each HTML file; Chart.js 4.4.0 is loaded from CDN.
+PRs welcome. No build step — keep it that way. All logic is vanilla JS inside each HTML file; Chart.js 4.4.0 is loaded from CDN.
 
 ---
 
